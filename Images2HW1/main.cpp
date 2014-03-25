@@ -14,8 +14,9 @@
 #include <list>
 #include <random>
 
-#include <QDirIterator>
-#include <QDir>
+#include <QtCore/QDirIterator>
+#include <QtCore/QDir>
+#include <QtCore/QDebug>
 
 const std::string PATH = "./data/mat-500-";
 const std::string TXT = ".txt";
@@ -149,45 +150,57 @@ int main()
 
   ClassifiedImages images;
   QDir image_directory(QString::fromStdString(BOW_DIRECTORY));
-  QDirIterator dir_iterator(image_directory, QDirIterator::Subdirectories);
+
+  qDebug() << image_directory;
 
   cv::Mat descriptor_set;
   cv::Mat descriptors;
 
-  //читаем каждую третью картинку из-за нехватки памяти
-  int counter = 0;
-  int third = 0;
-  while (dir_iterator.hasNext())
+  //читаем каждую вторую картинку из-за нехватки памяти
+  bool second = true;
+  QStringList dirs = image_directory.entryList();
+  qDebug() << dirs;
+
+  for (int i = 0; i < dirs.size(); ++i)
   {
-    QString next = dir_iterator.next();
-    QFileInfo fileinfo = dir_iterator.fileInfo();
+    if (dirs[i] == "." || dirs[i] == "..")
+      continue;
 
-    if (fileinfo.isFile())
+    QDirIterator iterator(image_directory.absolutePath() + QDir::separator() + dirs[i]);
+    std::cout << i << ": " << dirs[i].toStdString() << std::endl;
+
+    int counter = 0;
+    while (iterator.hasNext())
     {
-      std::vector<cv::KeyPoint> image_keypoints;
-      std::vector<cv::Mat> image_patches;
-      std::string image_path = next.toStdString();
-
-      if (third == 0)
+      if (counter++ <= 15)
       {
-        std::cout << counter++ << "'th image!" << std::endl;
-        cv::Mat image = cv::imread(image_path);
-        detector.detect(image, image_keypoints);
-        detector.compute(image, image_keypoints, descriptors);
+        QString next = iterator.next();
+        QFileInfo fileinfo = iterator.fileInfo();
 
-        std::transform(image_keypoints.begin(), image_keypoints.end(), std::back_inserter(image_patches),
-                       [&image](const cv::KeyPoint& keypoint) { return getKeypointPatch(keypoint, image); });
+        if (fileinfo.isFile())
+        {
+          std::cout << next.toStdString() << std::endl;
+          std::vector<cv::KeyPoint> image_keypoints;
+          std::vector<cv::Mat> image_patches;
+          std::string image_path = next.toStdString();
 
-        descriptor_set.push_back(descriptors);
-        keypoints.insert(keypoints.end(), image_keypoints.begin(), image_keypoints.end());
-        keypoint_patches.insert(keypoint_patches.end(), image_patches.begin(), image_patches.end());
+          cv::Mat image = cv::imread(image_path);
+          if (!image.empty())
+          {
+            detector.detect(image, image_keypoints);
+            detector.compute(image, image_keypoints, descriptors);
 
-        ++third;
+            std::transform(image_keypoints.begin(), image_keypoints.end(), std::back_inserter(image_patches),
+                          [&image](const cv::KeyPoint& keypoint){ return getKeypointPatch(keypoint, image); });
+
+            descriptor_set.push_back(descriptors);
+            keypoints.insert(keypoints.end(), image_keypoints.begin(), image_keypoints.end());
+            keypoint_patches.insert(keypoint_patches.end(), image_patches.begin(), image_patches.end());
+          }
+        }
       }
       else
-      {
-        ++third %= 3;
-      }
+        break;
     }
   }
 
@@ -205,7 +218,7 @@ int main()
   }
 
   std::vector<cv::Mat> patches = cluster_space.get_pictures_by_index(5);
-  counter = 0;
+  int counter = 0;
   for (const auto& image : patches)
   {
     std::stringstream ss;
