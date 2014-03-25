@@ -1,0 +1,12 @@
+img0.jpg->img1.jpg:
+Total matches: 35
+Good matches: 31
+Persentage: 1
+img0.jpg->img2.jpg:
+Total matches: 10
+Good matches: 0
+Persentage: 0
+img0.jpg->img3.jpg:
+Total matches: 19
+Good matches: 0
+Persentage: 0

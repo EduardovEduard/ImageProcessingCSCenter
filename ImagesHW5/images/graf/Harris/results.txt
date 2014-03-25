@@ -1,0 +1,15 @@
+img0 -> img1:
+Total pairs: 289
+Correct pairs: 0
+Persentage: 0%
+
+img0 -> img2:
+Total pairs: 65
+Correct pairs: 0
+Persentage: 0%
+
+img0 -> img3:
+Total pairs: 139
+Correct pairs: 0
+Persentage: 0%
+

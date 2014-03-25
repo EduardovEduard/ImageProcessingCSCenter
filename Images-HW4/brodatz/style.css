@@ -1,0 +1,38 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    color: black;
+}
+
+/*main.............................................*/
+#main {
+    width: 100%;
+    margin: 0 auto;
+    min-height: 100%;
+    position: relative;
+    overflow: hidden;
+    background: #F0FFFF;
+}
+
+/*block.............................................*/
+#block {
+	width: 100%;
+	padding: 30px 20px;
+	position: relative;
+	float: left;
+}
+
+/*picture.............................................*/
+#block div.picture, div.number {
+	min-width: 200px;
+	min-height: 400px;
+	float: left;
+	margin-right: 40px;
+	margin-bottom: 5px;
+	font-size: 36px;
+	font-family: 'Times New Roman';
+}
