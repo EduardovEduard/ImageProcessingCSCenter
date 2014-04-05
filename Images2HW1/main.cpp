@@ -162,7 +162,6 @@ int main()
         {
           std::cout << next.toStdString() << std::endl;
           std::vector<cv::KeyPoint> image_keypoints;
-          std::vector<cv::Mat> image_patches;
           std::string image_path = next.toStdString();
 
           cv::Mat image = cv::imread(image_path);
@@ -170,13 +169,7 @@ int main()
           {
             detector.detect(image, image_keypoints);
             detector.compute(image, image_keypoints, descriptors);
-
-            std::transform(image_keypoints.begin(), image_keypoints.end(), std::back_inserter(image_patches),
-                          [&image](const cv::KeyPoint& keypoint){ return getKeypointPatch(keypoint, image); });
-
             descriptor_set.push_back(descriptors);
-            keypoints.insert(keypoints.end(), image_keypoints.begin(), image_keypoints.end());
-            keypoint_patches.insert(keypoint_patches.end(), image_patches.begin(), image_patches.end());
           }
         }
       }
@@ -187,7 +180,6 @@ int main()
 
   std::cerr << "Building ClusterSpace..." << std::endl;
   ClusterSpace<double, 128> cluster_space(100);
-  cluster_space.set_pictures(std::move(keypoint_patches));
   cluster_space.build(descriptor_set);
   std::cerr << "ClusterSpace has been built!" << std::endl;
 
@@ -206,43 +198,6 @@ int main()
     std::cout << "ClusterSpace dumped!" << std::endl;
   }
   dump.close();
-
-  std::cerr << "Trying to read cluster space!" << std::endl;
-  std::ifstream dedump("cluster_space.txt");
-  ClusterSpace<double, 128> second_space;
-  if (dedump.is_open())
-  {
-    boost::archive::binary_iarchive iarchive(dedump);
-    iarchive >> second_space;
-  }
-  dedump.close();
-
-
-  std::cout << "Size: " << second_space.size() << std::endl;
-  total = 0;
-  std::for_each(second_space.begin(), second_space.end(), [&](const Cluster<double, 128>& cluster){
-    total += cluster.size();
-  });
-  std::cout << "Total: " << total << std::endl;
-
-
-  std::ofstream compareDump("cluster_space_compare.txt");
-  if (compareDump.is_open())
-  {
-    boost::archive::binary_oarchive oarchive(compareDump);
-    oarchive << second_space;
-    std::cout << "Comparing ClusterSpace dumped!" << std::endl;
-  }
-  compareDump.close();
-
-//  std::vector<cv::Mat> patches = cluster_space.get_pictures_by_index(5);
-//  int counter = 0;
-//  for (const auto& image : patches)
-//  {
-//    std::stringstream ss;
-//    ss << counter++ << ".jpg";
-//    cv::imwrite(ss.str(), image);
-//  }
 
   return 0;
 }
