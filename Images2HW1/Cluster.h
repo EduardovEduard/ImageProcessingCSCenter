@@ -5,6 +5,10 @@
 #include <array>
 #include <utility>
 
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/array.hpp>
+
 template<class T, size_t Dim>
 class Cluster
 {
@@ -13,12 +17,27 @@ public:
   typedef std::pair<int, Descriptor> LabeledDescriptor;
   typedef std::vector<LabeledDescriptor> DataStorage;
 
+  Cluster() : m_label(0)
+  {
+
+  }
+
+  Cluster(const Cluster& cluster) : m_label(cluster.label()),
+                                    m_center(cluster.center()),
+                                    m_data(cluster.data())
+  {
+  }
+
   Cluster(int label, const std::vector<T>& center) : m_label(label), m_center(center)
   {
   }
 
   Cluster(int label, DataStorage&& data)
     : m_label(label), m_data(std::move(data))
+  {
+  }
+
+  Cluster(Cluster&& cluster) : m_label(cluster.label()), m_data(std::move(cluster.data()))
   {
   }
 
@@ -32,7 +51,7 @@ public:
     m_data.push_back(std::make_pair(index, std::move(data)));
   }
 
-  const DataStorage data() const
+  DataStorage data() const
   {
     return m_data;
   }
@@ -57,6 +76,11 @@ public:
     return m_data.size();
   }
 
+  const std::vector<T>& center() const
+  {
+      return m_center;
+  }
+
   std::vector<size_t> indexes() const
   {
     std::vector<size_t> result;
@@ -67,10 +91,30 @@ public:
     return result;
   }
 
+  template <class Archive>
+  void serialize(Archive& archive, const int)
+  {
+    archive & m_label;
+    archive & m_center;
+    archive & m_data;
+  }
+
 private:
   int m_label;
-  DataStorage m_data;
   std::vector<T> m_center;
+  DataStorage m_data;
 };
+
+namespace boost
+{
+namespace serialization
+{
+  template <class Archive, class T, size_t l>
+  void serialize(Archive& ar, std::array<T, l>& array, const unsigned int)
+  {
+    ar & boost::serialization::make_array(array.data(), array.size());
+  }
+}
+}
 
 #endif // CLUSTER_H

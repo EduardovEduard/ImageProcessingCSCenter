@@ -18,6 +18,11 @@
 #include <QtCore/QDir>
 #include <QtCore/QDebug>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+
 const std::string PATH = "./data/mat-500-";
 const std::string TXT = ".txt";
 
@@ -89,29 +94,6 @@ cv::Mat read_data()
     return std::move(data);
 }
 
-//Прочитать все картинки
-ClassifiedImages read_categories()
-{
-  ClassifiedImages result;
-  QDir image_directory(QString::fromStdString(BOW_DIRECTORY));
-  QDirIterator dir_iterator(image_directory, QDirIterator::Subdirectories);
-
-  while (dir_iterator.hasNext())
-  {
-    QString next = dir_iterator.next();
-    QFileInfo fileinfo = dir_iterator.fileInfo();
-
-    if (fileinfo.isFile())
-    {
-      std::string image_path = next.toStdString();
-      cv::Mat image = cv::imread(image_path);
-      result.push_back(image);
-    }
-  }
-
-  return result;
-}
-
 //Вырезать из картинки кусок 16x16 по ключевой точке
 cv::Mat getKeypointPatch(const cv::KeyPoint keypoint, const cv::Mat& image)
 {
@@ -156,8 +138,7 @@ int main()
   cv::Mat descriptor_set;
   cv::Mat descriptors;
 
-  //читаем каждую вторую картинку из-за нехватки памяти
-  bool second = true;
+  //читаем не все картинки из-за нехватки памяти
   QStringList dirs = image_directory.entryList();
   qDebug() << dirs;
 
@@ -172,7 +153,7 @@ int main()
     int counter = 0;
     while (iterator.hasNext())
     {
-      if (counter++ <= 15)
+      if (counter++ <= 20)
       {
         QString next = iterator.next();
         QFileInfo fileinfo = iterator.fileInfo();
@@ -210,21 +191,58 @@ int main()
   cluster_space.build(descriptor_set);
   std::cerr << "ClusterSpace has been built!" << std::endl;
 
+  std::cout << "Size: " << cluster_space.size() << std::endl;
+  size_t total = 0;
+  std::for_each(cluster_space.begin(), cluster_space.end(), [&](const Cluster<double, 128>& cluster){
+    total += cluster.size();
+  });
+  std::cout << "Total: " << total << std::endl;
+
   std::ofstream dump("cluster_space.txt");
   if (dump.is_open())
   {
-    dump << cluster_space;
+    boost::archive::binary_oarchive oarchive(dump);
+    oarchive << cluster_space;
     std::cout << "ClusterSpace dumped!" << std::endl;
   }
+  dump.close();
 
-  std::vector<cv::Mat> patches = cluster_space.get_pictures_by_index(5);
-  int counter = 0;
-  for (const auto& image : patches)
+  std::cerr << "Trying to read cluster space!" << std::endl;
+  std::ifstream dedump("cluster_space.txt");
+  ClusterSpace<double, 128> second_space;
+  if (dedump.is_open())
   {
-    std::stringstream ss;
-    ss << counter++ << ".jpg";
-    cv::imwrite(ss.str(), image);
+    boost::archive::binary_iarchive iarchive(dedump);
+    iarchive >> second_space;
   }
+  dedump.close();
+
+
+  std::cout << "Size: " << second_space.size() << std::endl;
+  total = 0;
+  std::for_each(second_space.begin(), second_space.end(), [&](const Cluster<double, 128>& cluster){
+    total += cluster.size();
+  });
+  std::cout << "Total: " << total << std::endl;
+
+
+  std::ofstream compareDump("cluster_space_compare.txt");
+  if (compareDump.is_open())
+  {
+    boost::archive::binary_oarchive oarchive(compareDump);
+    oarchive << second_space;
+    std::cout << "Comparing ClusterSpace dumped!" << std::endl;
+  }
+  compareDump.close();
+
+//  std::vector<cv::Mat> patches = cluster_space.get_pictures_by_index(5);
+//  int counter = 0;
+//  for (const auto& image : patches)
+//  {
+//    std::stringstream ss;
+//    ss << counter++ << ".jpg";
+//    cv::imwrite(ss.str(), image);
+//  }
 
   return 0;
 }
